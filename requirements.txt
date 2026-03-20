@@ -1,0 +1,14 @@
+tensorflow
+numpy
+pandas
+matplotlib
+scikit-learn
+pillow
+opencv-python
+fastapi
+uvicorn
+python-multipart
+jinja2
+mediapipe
+notebook
+ipykernel
