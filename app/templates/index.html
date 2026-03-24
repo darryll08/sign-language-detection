@@ -73,44 +73,51 @@
             </div>
         </section>
 
-        <section class="card mode-card">
-            <div class="section-head">
-                <div>
-                    <span class="section-badge badge-blue">MODE 1</span>
-                    <h2>Single Capture Prediction</h2>
-                </div>
+<section class="card mode-card">
+    <div class="section-head">
+        <div>
+            <span class="section-badge badge-blue">MODE 1</span>
+            <h2>Single Capture Prediction</h2>
+        </div>
 
-                <button id="capture-btn" class="btn btn-green" onclick="captureFrame()">Capture</button>
-            </div>
+        <button id="capture-btn" class="btn btn-green" onclick="captureFrame()">Capture</button>
+    </div>
 
-            <div class="capture-grid">
-                <div class="result-box">
-                    <p class="box-label">Prediction Result</p>
-                    <h3 id="capture-prediction-label" class="prediction-big">-</h3>
+    <div class="capture-grid capture-grid-three">
+        <div class="result-box capture-image-box">
+            <p class="box-label">Captured Image</p>
 
-                    <div class="confidence-wrap">
-                        <div class="confidence-top">
-                            <span>Confidence</span>
-                            <span id="capture-confidence-text">0.0%</span>
-                        </div>
-                        <div class="progress-track">
-                            <div id="capture-confidence-fill" class="progress-fill"></div>
-                        </div>
-                    </div>
-
-                    <p id="capture-result-note" class="result-note">
-                        Start camera, pose satu gesture, lalu klik capture.
-                    </p>
-                </div>
-
-                <div class="result-box">
-                    <p class="box-label">Top 3 Predictions</p>
-                    <div id="capture-top3-list" class="top3-list">
-                        <div class="top3-empty">Belum ada hasil prediksi.</div>
-                    </div>
+            <div class="captured-image-frame">
+                <img id="captured-preview" alt="Captured preview">
+                <div id="captured-placeholder" class="captured-placeholder">
+                    Belum ada gambar capture
                 </div>
             </div>
-        </section>
+        </div>
+
+        <div class="result-box">
+            <p class="box-label">Prediction Result</p>
+            <h3 id="capture-prediction-label" class="prediction-big">-</h3>
+
+            <div class="confidence-wrap">
+                <div class="confidence-top">
+                    <span>Confidence</span>
+                    <span id="capture-confidence-text">0.0%</span>
+                </div>
+                <div class="progress-track">
+                    <div id="capture-confidence-fill" class="progress-fill"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="result-box">
+            <p class="box-label">Top 3 Predictions</p>
+            <div id="capture-top3-list" class="top3-list">
+                <div class="top3-empty">Belum ada hasil prediksi.</div>
+            </div>
+        </div>
+    </div>
+</section>
 
         <section class="card mode-card">
             <div class="section-head">

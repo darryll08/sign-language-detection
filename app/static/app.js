@@ -1,4 +1,6 @@
 const video = document.getElementById("video");
+const videoWrapper = document.getElementById("video-wrapper");
+const guideBox = document.getElementById("guide-box");
 const cameraStatus = document.getElementById("camera-status");
 
 const detectionMode = document.getElementById("detection-mode");
@@ -6,6 +8,9 @@ const handStatus = document.getElementById("hand-status");
 const landmarkStatus = document.getElementById("landmark-status");
 
 const captureBtn = document.getElementById("capture-btn");
+
+const capturedPreview = document.getElementById("captured-preview");
+const capturedPlaceholder = document.getElementById("captured-placeholder");
 
 const capturePredictionLabel = document.getElementById("capture-prediction-label");
 const captureConfidenceText = document.getElementById("capture-confidence-text");
@@ -61,16 +66,61 @@ function setDetectionPanel(handDetected, landmarksActive = true) {
 }
 
 async function buildCaptureBlobFromVideo() {
+    const videoWidth = video.videoWidth;
+    const videoHeight = video.videoHeight;
+
+    if (!videoWidth || !videoHeight) {
+        throw new Error("Video stream belum siap.");
+    }
+
+    const wrapperWidth = videoWrapper.clientWidth;
+    const wrapperHeight = videoWrapper.clientHeight;
+
+    const guideX = guideBox.offsetLeft;
+    const guideY = guideBox.offsetTop;
+    const guideW = guideBox.clientWidth;
+    const guideH = guideBox.clientHeight;
+
+    // Karena video pakai object-fit: cover, kita harus mapping dari posisi guide box
+    // di layar ke koordinat asli frame video.
+    const scale = Math.max(wrapperWidth / videoWidth, wrapperHeight / videoHeight);
+    const renderedWidth = videoWidth * scale;
+    const renderedHeight = videoHeight * scale;
+
+    const offsetX = (renderedWidth - wrapperWidth) / 2;
+    const offsetY = (renderedHeight - wrapperHeight) / 2;
+
+    let sx = (guideX + offsetX) / scale;
+    let sy = (guideY + offsetY) / scale;
+    let sw = guideW / scale;
+    let sh = guideH / scale;
+
+    sx = Math.max(0, sx);
+    sy = Math.max(0, sy);
+    sw = Math.min(sw, videoWidth - sx);
+    sh = Math.min(sh, videoHeight - sy);
+
     const canvas = document.createElement("canvas");
     canvas.width = 448;
     canvas.height = 448;
 
     const ctx = canvas.getContext("2d");
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    ctx.drawImage(
+        video,
+        sx, sy, sw, sh,
+        0, 0, canvas.width, canvas.height
+    );
 
     return new Promise((resolve) => {
         canvas.toBlob(resolve, "image/jpeg", 0.95);
     });
+}
+
+function showCapturedPreview(blob) {
+    const objectUrl = URL.createObjectURL(blob);
+    capturedPreview.src = objectUrl;
+    capturedPreview.style.display = "block";
+    capturedPlaceholder.style.display = "none";
 }
 
 async function requestPrediction(endpoint, blob) {
@@ -166,6 +216,10 @@ function setCaptureEmptyState(message) {
     captureConfidenceFill.style.width = "0%";
     captureTop3List.innerHTML = `<div class="top3-empty">Belum ada hasil prediksi.</div>`;
     captureResultNote.innerText = message;
+
+    capturedPreview.removeAttribute("src");
+    capturedPreview.style.display = "none";
+    capturedPlaceholder.style.display = "block";
 }
 
 function renderCaptureTop3(top3) {
@@ -212,6 +266,8 @@ async function captureFrame() {
         if (!blob) {
             throw new Error("Gagal membuat capture image.");
         }
+
+        showCapturedPreview(blob);
 
         const data = await requestPrediction("/predict-capture", blob);
 
