@@ -26,14 +26,19 @@ def load_label_map(label_map_path=LABEL_MAP_PATH):
 def preprocess_pil_image(image: Image.Image, image_size=IMAGE_SIZE) -> np.ndarray:
     image = image.convert("RGB")
     image = image.resize(image_size)
-    image_array = np.array(image).astype("float32") / 255.0
+    image_array = np.asarray(image, dtype=np.float32) / 255.0
     image_array = np.expand_dims(image_array, axis=0)
     return image_array
 
 
 def preprocess_image_path(image_path: str, image_size=IMAGE_SIZE) -> np.ndarray:
-    image = Image.open(image_path)
-    return preprocess_pil_image(image, image_size=image_size)
+    with Image.open(image_path) as image:
+        return preprocess_pil_image(image, image_size=image_size)
+
+
+def _predict_probs(model, image_array: np.ndarray) -> np.ndarray:
+    preds = model.predict(image_array, verbose=0)[0]
+    return preds
 
 
 def predict_image(
@@ -42,7 +47,7 @@ def predict_image(
     label_map: Dict[str, str]
 ) -> Dict[str, float]:
     image_array = preprocess_image_path(image_path)
-    preds = model.predict(image_array, verbose=0)[0]
+    preds = _predict_probs(model, image_array)
 
     pred_idx = int(np.argmax(preds))
     pred_label = label_map[str(pred_idx)]
@@ -60,7 +65,7 @@ def predict_pil_image(
     label_map: Dict[str, str]
 ) -> Dict[str, float]:
     image_array = preprocess_pil_image(image)
-    preds = model.predict(image_array, verbose=0)[0]
+    preds = _predict_probs(model, image_array)
 
     pred_idx = int(np.argmax(preds))
     pred_label = label_map[str(pred_idx)]
@@ -79,7 +84,25 @@ def predict_top_k(
     k: int = 3
 ) -> List[Tuple[str, float]]:
     image_array = preprocess_image_path(image_path)
-    preds = model.predict(image_array, verbose=0)[0]
+    preds = _predict_probs(model, image_array)
+
+    top_indices = np.argsort(preds)[::-1][:k]
+
+    results = []
+    for idx in top_indices:
+        results.append((label_map[str(int(idx))], float(preds[idx])))
+
+    return results
+
+
+def predict_pil_top_k(
+    model,
+    image: Image.Image,
+    label_map: Dict[str, str],
+    k: int = 3
+) -> List[Tuple[str, float]]:
+    image_array = preprocess_pil_image(image)
+    preds = _predict_probs(model, image_array)
 
     top_indices = np.argsort(preds)[::-1][:k]
 
