@@ -38,12 +38,22 @@ const spellReleaseCount = document.getElementById("spell-release-count");
 
 let stream = null;
 
-// Mode 2 settings
-const LIVE_INTERVAL_MS = 450;
-const CONFIDENCE_THRESHOLD = 0.80;
-const STABLE_WINDOW = 8;
-const MIN_STABLE_COUNT = 6;
-const RELEASE_REQUIRED_COUNT = 4;
+// ── Spell mode settings ───────────────────────────────────────────────────
+// Faster polling: 200ms (5fps) instead of 450ms (2.2fps)
+const LIVE_INTERVAL_MS = 200;
+
+// Confidence threshold — model with EMA smoothing is more stable, so we can
+// keep this slightly lower. The backend also applies its own gate at 0.45.
+const CONFIDENCE_THRESHOLD = 0.72;
+
+// Voting window: 7 frames, need 5 consistent votes
+// (same strictness but responds faster at 5fps)
+const STABLE_WINDOW = 7;
+const MIN_STABLE_COUNT = 5;
+
+// Release: only need 3 "nothing" frames to clear (was 4)
+const RELEASE_REQUIRED_COUNT = 3;
+// ─────────────────────────────────────────────────────────────────────────
 
 let spellModeRunning = false;
 let spellIntervalId = null;
@@ -81,8 +91,6 @@ async function buildCaptureBlobFromVideo() {
     const guideW = guideBox.clientWidth;
     const guideH = guideBox.clientHeight;
 
-    // Karena video pakai object-fit: cover, kita harus mapping dari posisi guide box
-    // di layar ke koordinat asli frame video.
     const scale = Math.max(wrapperWidth / videoWidth, wrapperHeight / videoHeight);
     const renderedWidth = videoWidth * scale;
     const renderedHeight = videoHeight * scale;
@@ -112,7 +120,7 @@ async function buildCaptureBlobFromVideo() {
     );
 
     return new Promise((resolve) => {
-        canvas.toBlob(resolve, "image/jpeg", 0.95);
+        canvas.toBlob(resolve, "image/jpeg", 0.90);  // slightly lower quality = faster upload
     });
 }
 
@@ -144,6 +152,16 @@ async function requestPrediction(endpoint, blob) {
     }
 
     return await response.json();
+}
+
+async function resetLiveState() {
+    // Tell the server to reset video-mode temporal state
+    try {
+        await fetch("/reset-live", { method: "POST" });
+    } catch (e) {
+        // Non-critical, continue regardless
+        console.warn("Could not reset live state:", e);
+    }
 }
 
 async function startCamera() {
@@ -199,11 +217,11 @@ function updateCaptureResult(label, confidence) {
         return;
     }
 
-    if (percent >= 95) {
+    if (percent >= 90) {
         captureResultNote.innerText = "Model sangat yakin dengan hasil ini.";
-    } else if (percent >= 80) {
+    } else if (percent >= 72) {
         captureResultNote.innerText = "Hasil cukup meyakinkan.";
-    } else if (percent >= 60) {
+    } else if (percent >= 55) {
         captureResultNote.innerText = "Hasil masih cukup ragu. Coba rapikan pose tangan lalu capture lagi.";
     } else {
         captureResultNote.innerText = "Confidence rendah. Coba posisikan tangan lebih jelas dan satu tangan saja.";
@@ -271,7 +289,7 @@ async function captureFrame() {
 
         const data = await requestPrediction("/predict-capture", blob);
 
-        setDetectionPanel(data.label !== "nothing", data.used_landmarks);
+        setDetectionPanel(data.hand_detected, data.used_landmarks);
 
         if (!data.ok) {
             setCaptureEmptyState(data.message || "Prediction failed.");
@@ -359,7 +377,7 @@ function commitLabel(label) {
     updateSpellOutput();
 }
 
-function startSpellMode() {
+async function startSpellMode() {
     if (!stream) {
         spellNote.innerText = "Start camera terlebih dahulu.";
         return;
@@ -369,6 +387,9 @@ function startSpellMode() {
         spellNote.innerText = "Spell mode sudah berjalan.";
         return;
     }
+
+    // Reset server-side video mode state so we start fresh
+    await resetLiveState();
 
     spellModeRunning = true;
     spellState = "WAITING_LETTER";
@@ -389,7 +410,7 @@ function startSpellMode() {
     spellIntervalId = setInterval(processSpellFrame, LIVE_INTERVAL_MS);
 }
 
-function stopSpellMode() {
+async function stopSpellMode() {
     spellModeRunning = false;
 
     if (spellIntervalId) {
@@ -401,6 +422,9 @@ function stopSpellMode() {
     spellState = "WAITING_LETTER";
     stableHistory = [];
     releaseCounter = 0;
+
+    // Reset server-side video mode + EMA state
+    await resetLiveState();
 
     spellModeStatus.innerText = "idle";
     startSpellBtn.disabled = false;
@@ -423,7 +447,7 @@ async function processSpellFrame() {
 
         const data = await requestPrediction("/predict-live", blob);
 
-        setDetectionPanel(data.label !== "nothing", data.used_landmarks);
+        setDetectionPanel(data.hand_detected, data.used_landmarks);
         handleSpellResult(data);
 
     } catch (error) {
@@ -437,7 +461,7 @@ async function processSpellFrame() {
 
 function handleNoHand(message) {
     spellRawLabel.innerText = "nothing";
-    spellRawConfidence.innerText = "100.0%";
+    spellRawConfidence.innerText = "—";
     stableHistory = [];
 
     if (spellState === "WAITING_RELEASE") {
@@ -482,10 +506,14 @@ function handleSpellPrediction(rawLabel, confidence) {
 
                 spellNote.innerText = `Huruf "${majority.label}" sudah disimpan. Lepaskan tangan sebentar.`;
             } else {
-                spellNote.innerText = "Membaca gesture...";
+                const progress = stableHistory.length > 0 ? majority.count : 0;
+                spellNote.innerText = `Membaca gesture... (${progress}/${MIN_STABLE_COUNT})`;
             }
         } else {
-            stableHistory = [];
+            // Reset history when prediction is not reliable or is "nothing"
+            if (stableHistory.length > 0) {
+                stableHistory.shift(); // gentle decay instead of hard reset
+            }
 
             if (rawLabel === "nothing") {
                 spellNote.innerText = "Silakan tampilkan gesture berikutnya.";
@@ -494,6 +522,7 @@ function handleSpellPrediction(rawLabel, confidence) {
             }
         }
     } else if (spellState === "WAITING_RELEASE") {
+        // In waiting-release state, treat low-confidence or nothing as release signal
         const isReleaseFrame = !reliable || rawLabel === "nothing";
 
         if (isReleaseFrame) {
@@ -504,7 +533,8 @@ function handleSpellPrediction(rawLabel, confidence) {
                 releaseCounter = 0;
                 spellNote.innerText = "Siap membaca huruf berikutnya.";
             } else {
-                spellNote.innerText = "Menunggu jeda sebelum huruf berikutnya.";
+                const remaining = RELEASE_REQUIRED_COUNT - releaseCounter;
+                spellNote.innerText = `Menunggu jeda... (${remaining} frame lagi)`;
             }
         } else {
             releaseCounter = 0;
@@ -519,7 +549,7 @@ function handleSpellResult(data) {
         return;
     }
 
-    if (data.label === "nothing") {
+    if (data.label === "nothing" || !data.hand_detected) {
         handleNoHand("No valid hand/gesture detected.");
         return;
     }
