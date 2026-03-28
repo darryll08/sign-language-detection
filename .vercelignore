@@ -1,0 +1,15 @@
+data
+ipynb
+reports
+notebooks
+.venv
+venv
+__pycache__
+*.ipynb
+*.csv
+*.zip
+*.pt
+*.pth
+*.ckpt
+*.npy
+*.npz

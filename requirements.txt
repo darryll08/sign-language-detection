@@ -13,3 +13,5 @@ mediapipe
 notebook
 ipykernel
 joblib
+flask
+gunicorn
