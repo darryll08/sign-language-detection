@@ -9,6 +9,16 @@ Versi repository ini disusun mengikuti **alur notebook eksperimen (`.ipynb`)**, 
 
 ---
 
+title: Sign Language Detection
+emoji: 🤟
+colorFrom: blue
+colorTo: indigo
+sdk: docker
+app_port: 7860
+pinned: false
+
+---
+
 ## 🎯 Tujuan Proyek
 
 Tujuan utama project ini adalah membuat sistem pengenalan gesture tangan ASL yang:
@@ -303,13 +313,13 @@ atau gunakan Google Colab / JupyterLab sesuai kebutuhan.
 Jika web app disertakan dalam repo:
 
 ```bash
-uvicorn app.main:app --reload
+uvicorn app.main:app --host 0.0.0.0 --port 7860
 ```
 
 Lalu buka browser ke:
 
 ```text
-http://127.0.0.1:8000
+http://localhost:7860
 ```
 
 ---
