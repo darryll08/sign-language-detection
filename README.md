@@ -1,3 +1,13 @@
+---
+title: Sign Language Detection
+emoji: 🤟
+colorFrom: blue
+colorTo: indigo
+sdk: docker
+app_port: 7860
+pinned: false
+---
+
 # 🤟 ASL Hand Gesture Recognition — Notebook-Based ML Pipeline & Web App
 
 Proyek ini membangun sistem **ASL (American Sign Language) alphabet recognition** dengan dua pendekatan utama:
@@ -6,16 +16,6 @@ Proyek ini membangun sistem **ASL (American Sign Language) alphabet recognition*
 2. **Model final berbasis hand landmarks** menggunakan **MediaPipe Hands + MLP**
 
 Versi repository ini disusun mengikuti **alur notebook eksperimen (`.ipynb`)**, sehingga pembaca bisa memahami proses project secara bertahap: mulai dari konfigurasi, data loading, preprocessing, training, evaluasi, hingga inference dan implementasi web interaktif.
-
----
-
-title: Sign Language Detection
-emoji: 🤟
-colorFrom: blue
-colorTo: indigo
-sdk: docker
-app_port: 7860
-pinned: false
 
 ---
 
