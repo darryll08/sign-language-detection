@@ -7,6 +7,8 @@ sdk: docker
 app_port: 7860
 pinned: false
 ---
+# LINK PROJECT 
+https://huggingface.co/spaces/darryll08/asl-alphabet-detection
 
 # 🤟 ASL Hand Gesture Recognition — Notebook-Based ML Pipeline & Web App
 
