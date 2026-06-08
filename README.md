@@ -1,5 +1,5 @@
 ---
-title: Sign Language Detection
+title: ASL Sign Language Detection
 emoji: 🤟
 colorFrom: blue
 colorTo: indigo
@@ -7,189 +7,71 @@ sdk: docker
 app_port: 7860
 pinned: false
 ---
-# LINK PROJECT 
-https://huggingface.co/spaces/darryll08/asl-alphabet-detection
 
-# 🤟 ASL Hand Gesture Recognition — Notebook-Based ML Pipeline & Web App
+# 🤟 ASL Hand Gesture Recognition: End-to-End Machine Learning Pipeline & Web Application
 
-Proyek ini membangun sistem **ASL (American Sign Language) alphabet recognition** dengan dua pendekatan utama:
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-Hugging%20Face-yellow.svg)](https://huggingface.co/spaces/darryll08/asl-alphabet-detection)
+[![Python](https://img.shields.io/badge/Python-3.x-blue.svg)](https://www.python.org/)
+[![TensorFlow](https://img.shields.io/badge/TensorFlow-2.x-orange.svg)](https://www.tensorflow.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-Framework-009688.svg)](https://fastapi.tiangolo.com/)
 
-1. **Baseline CNN berbasis citra** menggunakan **MobileNetV2**
-2. **Model final berbasis hand landmarks** menggunakan **MediaPipe Hands + MLP**
+## 🎯 Project Overview
 
-Versi repository ini disusun mengikuti **alur notebook eksperimen (`.ipynb`)**, sehingga pembaca bisa memahami proses project secara bertahap: mulai dari konfigurasi, data loading, preprocessing, training, evaluasi, hingga inference dan implementasi web interaktif.
+This repository hosts an end-to-end machine learning project designed to recognize American Sign Language (ASL) alphabets. The project demonstrates a complete data science workflow: from exploratory data analysis (EDA) and data pipeline engineering to model training, evaluation, and final deployment as an interactive web application.
 
----
+The system is capable of classifying **29 distinct classes**, including the letters `A-Z` and special functional labels (`del`, `nothing`, `space`).
 
-## 🎯 Tujuan Proyek
-
-Tujuan utama project ini adalah membuat sistem pengenalan gesture tangan ASL yang:
-
-- dapat mengklasifikasikan huruf dan label khusus ASL,
-- bisa diuji pada dataset gambar,
-- dapat diimplementasikan ke **web app interaktif**,
-- dan dibandingkan antara pendekatan **image-based** dan **landmark-based**.
-
-Output akhirnya adalah:
-
-- **Notebook analysis / modeling** untuk dokumentasi eksperimen
-- **Web app interaktif** untuk demo/penggunaan langsung
-- **Artikel/penjelasan singkat** yang merangkum logic dan hasil model
+To ensure a robust real-world application, this project explores and compares two distinct architectural approaches:
+1. **Baseline CNN Model:** An image-based approach utilizing transfer learning.
+2. **Final Landmark Model:** A feature-engineered approach utilizing spatial coordinates for real-time inference.
 
 ---
 
-## 🧠 Ringkasan Pendekatan
+## 🧠 Architectural Methodologies
 
-### 1) Baseline Image Model
-Pendekatan awal menggunakan **RGB hand image classification**:
+### 1. Baseline Image Model (MobileNetV2)
+The initial approach frames the problem as a standard image classification task using RGB data.
+* **Pipeline:** Images are resized to 224x224, normalized to `[0,1]`, and fed through a lightweight data augmentation pipeline.
+* **Architecture:** Utilizes a pre-trained **MobileNetV2** base (frozen) with custom top layers (`GlobalAveragePooling`, `Dropout`, and a `Softmax` classifier).
+* **Performance:** Achieves strong results on structured, static datasets but exhibits vulnerability to varying backgrounds and lighting conditions in live webcam tests.
 
-- input gambar di-resize ke **224 × 224**
-- preprocessing dan augmentasi ringan
-- model **MobileNetV2 transfer learning**
-- output multi-class classification untuk label ASL
+### 2. Final Landmark Model (MediaPipe + MLP) - *Selected for Deployment*
+To address the limitations of the baseline model in real-world environments, the final architecture relies on spatial hand landmarks.
+* **Pipeline:** Utilizes **MediaPipe Hands** to extract 21 3D coordinates per hand. 
+* **Feature Engineering:** Extracted coordinates are normalized and enriched with additional geometric features to account for varying distances and angles. Handedness (left/right) is also handled.
+* **Architecture:** A Multi-Layer Perceptron (`MLPClassifier`) trained on the engineered landmark features, scaled via `StandardScaler`. Synthetic data was generated for the `nothing` class to improve robustness.
 
-Model ini bekerja baik di data terstruktur, tetapi kurang stabil saat dipakai pada webcam real-world.
+### ⚖️ Technical Trade-off Analysis
 
-### 2) Final Landmark Model
-Pendekatan final menggunakan **hand landmarks**:
+| Feature | Baseline CNN (Image-Based) | Final MLP (Landmark-Based) |
+| :--- | :--- | :--- |
+| **Input Data** | Raw RGB Pixels | 21 Spatial Coordinates (x, y, z) |
+| **Robustness** | Susceptible to background noise & lighting | Highly resilient to varied backgrounds |
+| **Computational Cost** | High (Heavy inference logic) | Low (Lightweight, fast execution) |
+| **Deployment Use Case** | Static image batch processing | Real-time interactive webcam feeds |
 
-- deteksi tangan dengan **MediaPipe Hand Landmarker**
-- ekstraksi **21 titik landmark**
-- normalisasi landmark
-- penambahan fitur geometris
-- klasifikasi dengan **MLPClassifier**
-
-Pipeline ini dipilih untuk deployment karena lebih robust terhadap:
-
-- background yang bervariasi
-- perbedaan pengguna
-- pencahayaan yang berubah
-- input webcam real-time
+*Result: The Landmark MLP was selected for production deployment due to its superior latency and stability in dynamic, real-world environments.*
 
 ---
 
-## 🏷️ Label Kelas
+## 🌐 Web Application Features
 
-Model mengenali label berikut:
+The project is deployed via **FastAPI** and **Uvicorn**, providing a responsive web interface with two primary operational modes:
 
-- **Huruf:** `A-Z`
-- **Label khusus:** `del`, `nothing`, `space`
-
-Total kelas: **29**
+* **Single Capture Inference:** Captures a single webcam frame, isolates the gesture Region of Interest (ROI), and returns the top-K predictions alongside confidence scores.
+* **Real-Time Spell Builder:** Continuously streams predictions from the webcam, employing prediction stabilization heuristics. It strings recognized letters into words and dynamically handles functional gestures (e.g., using `del` as a backspace and `space` for word separation).
 
 ---
 
-## 📘 Struktur Utama Notebook
+## 📂 Repository Structure
 
-Notebook utama mengikuti alur eksperimen berikut:
-
-### 1. Konfigurasi Global
-Berisi pengaturan path dataset, path model, ukuran gambar, hyperparameter training, dan daftar kelas.
-
-### 2. Utilities
-Berisi helper seperti:
-
-- set random seed
-- memastikan direktori output tersedia
-- simpan / load file JSON
-
-### 3. Data Loading & EDA
-Notebook membaca dataset dari folder train, membangun dataframe, lalu melakukan:
-
-- train/validation split secara stratified
-- analisis distribusi kelas
-- audit data
-- visualisasi contoh gambar
-
-### 4. Preprocessing & tf.data Pipeline
-Untuk baseline CNN, dilakukan:
-
-- load file gambar
-- decode JPG
-- resize ke `224×224`
-- normalisasi pixel ke `[0,1]`
-- augmentasi ringan (brightness dan contrast)
-- batching + prefetch dengan `tf.data`
-
-### 5. Build & Compile CNN
-Model baseline menggunakan:
-
-- **MobileNetV2**
-- base model dibekukan (`trainable=False`)
-- `GlobalAveragePooling`
-- `Dropout`
-- output softmax
-
-### 6. Training CNN
-Notebook melakukan training model baseline dengan callback:
-
-- EarlyStopping
-- ModelCheckpoint
-- ReduceLROnPlateau
-
-### 7. Evaluasi CNN
-Hasil CNN dianalisis melalui:
-
-- training history
-- classification report
-- confusion matrix
-
-### 8. Hand ROI Detector
-Notebook juga mendokumentasikan proses pendeteksian **ROI tangan** menggunakan MediaPipe sebagai tahap bantu untuk memperbaiki fokus area tangan.
-
-### 9. Landmark Feature Extraction
-Tahap ini merupakan inti pipeline final:
-
-- ekstraksi 21 landmark tangan
-- normalisasi koordinat
-- penanganan handedness
-- pembentukan fitur geometris tambahan
-
-### 10. Training Landmark MLP
-Notebook membangun dataset landmark, lalu melatih model MLP dengan:
-
-- `StandardScaler`
-- `MLPClassifier`
-
-Selain landmark mentah, pipeline juga memasukkan:
-- augmentasi koordinat
-- sample sintetis untuk kelas `nothing`
-
-### 11. Evaluasi Landmark MLP
-Model final dievaluasi dengan:
-
-- classification report
-- confusion matrix
-- loss curve
-
-### 12. Inference
-Notebook menyediakan dua jalur inference:
-
-- **CNN inference**
-- **Landmark MLP inference**
-
-Termasuk top-k prediction dan logic threshold confidence.
-
-### 13. Demo Prediksi
-Disediakan demo prediksi untuk beberapa gambar validasi sebagai contoh hasil inferensi model.
-
-### 14. Ringkasan Hasil
-Bagian akhir notebook merangkum:
-- jumlah data
-- akurasi model
-- model yang dipilih untuk deployment
-- alasan pemilihan final approach
-
----
-
-## 📂 Struktur Repository
+The codebase is modularized to separate experimental notebooks from production-ready source code.
 
 ```bash
 .
 ├── notebooks/
-│   └── asl_recognition_notebook.ipynb
-│
-├── src/
+│   └── asl_recognition_notebook.ipynb  # Comprehensive EDA, training, and evaluation workflows
+├── src/                                # Modularized source code for the ML pipeline
 │   ├── config.py
 │   ├── data_loader.py
 │   ├── preprocess.py
@@ -201,179 +83,19 @@ Bagian akhir notebook merangkum:
 │   ├── inference.py
 │   ├── landmark_inference.py
 │   └── utils.py
-│
-├── app/
+├── app/                                # FastAPI web application backend and frontend
 │   ├── main.py
 │   ├── templates/
 │   └── static/
-│
-├── models/
+├── models/                             # Serialized model artifacts and label mappings
 │   ├── best_model.keras
 │   ├── label_map.json
 │   ├── landmark_mlp.joblib
 │   ├── landmark_label_encoder.joblib
 │   └── landmark_label_map.json
-│
-├── reports/
+├── reports/                            # Performance metrics and visualizations
 │   ├── training_accuracy.png
 │   ├── training_loss.png
 │   └── confusion_matrix.png
-│
-├── dataset/ or data/
-│   └── (dataset / extracted data / processed data)
-│
+├── dataset/                            # Raw and processed datasets (ignored in git)
 └── README.md
-```
-
----
-
-## 🧪 Notebook Flow Singkat
-
-Secara ringkas, alur notebook adalah:
-
-```text
-Config
-→ Utilities
-→ Data Loading + EDA
-→ Image Preprocessing
-→ CNN Training
-→ CNN Evaluation
-→ Hand ROI
-→ Landmark Feature Extraction
-→ Landmark MLP Training
-→ Landmark Evaluation
-→ Inference Demo
-→ Summary
-```
-
-Jadi README ini memang mengikuti **flow notebook**, bukan hanya daftar file `.py`.
-
----
-
-## 🌐 Implementasi Web App
-
-Selain notebook eksperimen, project ini juga memiliki implementasi web interaktif yang mendukung:
-
-### 1. Single Capture Prediction
-- ambil satu frame dari webcam
-- crop area gesture
-- lakukan prediksi satu label ASL
-- tampilkan hasil, confidence, dan top-k prediction
-
-### 2. Spell Builder Mode
-- melakukan prediksi berulang dari webcam
-- menggunakan stabilisasi prediksi
-- menyusun huruf menjadi string
-- mendukung:
-  - `del` untuk backspace
-  - `space` untuk spasi
-  - `nothing` untuk no-hand / release state
-
-Model yang dipakai untuk deployment adalah **landmark-based model** karena lebih stabil untuk input webcam.
-
----
-
-## ✅ Kenapa Model Landmark Dipilih untuk Deployment
-
-Walaupun baseline CNN memberikan hasil yang baik pada data citra, model final yang dipakai di web app adalah **MediaPipe + Landmark MLP** karena:
-
-- lebih robust terhadap background
-- lebih konsisten di kondisi webcam
-- lebih ringan untuk inference
-- lebih tahan terhadap variasi antar pengguna
-
-Namun demikian, beberapa gesture tetap menantang, terutama:
-
-- gesture dinamis seperti **J** dan **Z**
-- gesture dengan occlusion tinggi seperti **O**, **C**, atau pose jari tertutup
-
----
-
-## ⚠️ Keterbatasan Project
-
-Beberapa keterbatasan sistem saat ini:
-
-- gesture dinamis belum ideal jika hanya diprediksi dari single frame
-- beberapa huruf dengan bentuk mirip masih berpotensi tertukar
-- performa sangat dipengaruhi kualitas framing tangan dan deteksi landmark
-- deployment realtime tetap membutuhkan gesture yang cukup jelas dan stabil
-
----
-
-## 🚀 Cara Menjalankan Project
-
-### Opsi 1 — Jalankan Notebook
-Buka notebook utama:
-
-```bash
-jupyter notebook notebooks/asl_recognition_notebook.ipynb
-```
-
-atau gunakan Google Colab / JupyterLab sesuai kebutuhan.
-
-### Opsi 2 — Jalankan Web App
-Jika web app disertakan dalam repo:
-
-```bash
-uvicorn app.main:app --host 0.0.0.0 --port 7860
-```
-
-Lalu buka browser ke:
-
-```text
-http://localhost:7860
-```
-
----
-
-## 📌 Kebutuhan Environment
-
-Library utama yang digunakan:
-
-- Python 3.x
-- TensorFlow
-- scikit-learn
-- pandas
-- numpy
-- matplotlib
-- Pillow
-- joblib
-- FastAPI
-- Uvicorn
-- MediaPipe
-
-Jika notebook memiliki cell instalasi dependency, ikuti sesuai urutan cell awal notebook.
-
----
-
-## 📝 Catatan Pengumpulan
-
-Untuk kebutuhan pengumpulan, komponen utama project ini adalah:
-
-1. **Notebook analysis / preprocessing / modeling**
-2. **Source code modular (`src/`)**
-3. **Implementasi web app**
-4. **README**
-5. **Model artifacts**
-6. **Artikel / penjelasan singkat berdasarkan notebook**
-
-Dengan demikian, notebook berfungsi sebagai dokumentasi eksperimen utama, sedangkan folder `src/` dan `app/` menjadi codebase pendukung implementasi.
-
----
-
-## 📚 Kesimpulan
-
-Project ini menunjukkan proses pengembangan sistem ASL recognition dari dua sudut:
-
-- **baseline image classification**
-- **final landmark-based deployment**
-
-Secara eksperimen, CNN memberikan baseline yang baik.  
-Secara implementasi nyata, pipeline **MediaPipe Hands + Landmark MLP** lebih cocok untuk aplikasi webcam interaktif.
-
-Pendekatan akhir ini dipilih karena memberikan trade-off terbaik antara:
-- akurasi praktis,
-- kestabilan real-time,
-- dan kemudahan deployment.
-
----
